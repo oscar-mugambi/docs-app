@@ -1,9 +1,8 @@
 const express = require('express')
-const getDocs = require('../controller/getDocs')
+const { getDriveFolders, accessDb, downloadFiles, readFiles } = require('../controller/getDocs')
 require('dotenv').config()
 const router = express.Router() // eslint-disable-line new-cap
 
-/** GET /health-check - Check service health */
 router.get('/health-check', (_req, res) => {
   res.json({
     status: 'OK',
@@ -11,6 +10,9 @@ router.get('/health-check', (_req, res) => {
   })
 })
 
-router.route('/docs').get(getDocs)
+router.route('/docs').get(getDriveFolders)
+router.route('/db').get(accessDb)
+router.route('/downloadFiles').get(downloadFiles)
+router.route('/readFiles').get(readFiles)
 
 module.exports = router

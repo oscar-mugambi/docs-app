@@ -6,10 +6,8 @@ const app = express()
 
 const port = process.env.PORT || 3000
 
-console.log('here we are')
 app.use(express.json())
 app.use(cors())
-
 app.use('/', routes)
 
 app.listen(port, () => {
