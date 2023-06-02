@@ -1,5 +1,4 @@
 const { google } = require('googleapis')
-const { GoogleAuth } = require('google-auth-library')
 require('dotenv').config()
 const db = require('../db')
 const fs = require('fs')
@@ -55,19 +54,62 @@ async function logger(file, name) {
 async function readFiles(req, res) {
   const findBelly = /\bBelly\b/g
   const findNumber2 = /(?<=>)(.*)/
-  const file = path.join(__dirname, '..', 'records', 'Week 1.txt')
+  const removeFileExtension = /\.txt\b/
+  const collatedDataFilePath = path.join(__dirname, '..', 'records', 'data.txt')
+  const sortedFilePath = path.join(__dirname, '..', 'records', 'data2.txt')
+
+  const isolateWeekNumber = /Week (\d+)/
   let value = []
-  fs.readFile(file, 'utf-8', (err, data) => {
-    const fileLines = data.split('\n')
-    for (const line of fileLines) {
-      const match = line.match(findBelly)
-      if (match) {
-        const number = line.match(findNumber2)
-        if (number) value.push(number[0])
-      }
-    }
-    return res.json(value)
+
+  fs.readdir(path.join(__dirname, '..', 'records'), (err, files) => {
+    files.forEach((file) => {
+      const formattedFileName = file.replace(' ', ' ')
+      const filePath = path.join(__dirname, '..', 'records', formattedFileName)
+
+      fs.readFile(filePath, 'utf-8', (err, data) => {
+        if (err) {
+          console.log(err)
+        }
+        const lines = data.split('\n')
+        fs.writeFile(collatedDataFilePath, '', (err) => {
+          err ? console.log(err) : null
+        })
+        for (const line of lines) {
+          const bellyData = line.match(findBelly)
+          if (bellyData) {
+            const value = line.match(findNumber2)
+            if (value) {
+              fs.appendFile(
+                collatedDataFilePath,
+                `${formattedFileName.replace(removeFileExtension, '')} - ${value[0]} \n`,
+                (err) => {
+                  if (err) {
+                    console.log(err)
+                  }
+                }
+              )
+            }
+          }
+        }
+      })
+    })
   })
+  fs.readFile(collatedDataFilePath, 'utf-8', (err, data) => {
+    const lines = data.split('\n')
+    const sortedLines = lines
+      .filter((line) => line)
+      .sort((a, b) => {
+        const weekA = a.match(isolateWeekNumber)
+        const weekB = b.match(isolateWeekNumber)
+        if (!weekA || !weekB) return -1
+        return Number(weekA[1]) - Number(weekB[1])
+      })
+
+    fs.writeFile(sortedFilePath, sortedLines.join('\n'), (err) => {
+      err ? console.log(err) : null
+    })
+  })
+  return res.json(value)
 }
 
 async function downloadFiles(req, res) {
@@ -76,7 +118,6 @@ async function downloadFiles(req, res) {
   const results = await db.query(query)
 
   for (const doc of results.rows) {
-    // console.log(doc)
     try {
       const file = await service.files.export({
         fileId: doc.doc,
